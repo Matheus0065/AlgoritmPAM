@@ -11,6 +11,8 @@ df2 = df[:10]  # BASE TESTE
 class AlgoritmoPAM:
     _LISTA_MEDOIDS = {}
     _MEDOIDS = None
+    _VALORES_MSE = []
+    _BACKUP_MEDOIDS = []
 
     @staticmethod
     def definir_menor(lista_medoid):  # Função para identificar o menor valor
@@ -75,7 +77,7 @@ class AlgoritmoPAM:
     @staticmethod
     def mse_total(medoids_associados):
         soma_mse_total = 0
-        for idx in range(len(medoids_associados)):
+        for idx in range(len(medoids_associados) + 2):
             if idx not in medoids_associados:
                 pass
 
@@ -95,6 +97,7 @@ class AlgoritmoPAM:
     def fit_pam(self, pontos, K):
 
         # RECEBER OS VALORES DE ENTRADAS DO DATASET
+        global antigo_medoid
         dataset = pontos.values
 
         # SORTEAR OS VALORES ALEATORIAMENTE, K PONTOS DOS DADOS COMO MEDOIDS
@@ -105,7 +108,7 @@ class AlgoritmoPAM:
         print(f"POSIÇÕES INICIAIS DOS MEDOIDS 01: {_MEDOIDS[1]}")
         print(f"POSIÇÕES INICIAIS DOS MEDOIDS 02: {_MEDOIDS[2]}")
         print("_______________________________________")
-
+        self._BACKUP_MEDOIDS.append(_MEDOIDS)
         ponto_inicial = 0
         while True:
 
@@ -126,38 +129,48 @@ class AlgoritmoPAM:
             # CALCULAR O CUSTO TOTAL (MSE) PARA CADA MEDOID
             TOTAL_MSE = self.mse_total(ASSOCIADOS_MEDOIDS)
             print(f"TOTAL MSE: {TOTAL_MSE}")
+            self._VALORES_MSE.append(TOTAL_MSE)
 
-            # SORTEAR NOVO MEDOID
-            nvo_medoid = random.choice(new_dataset)
-            print(f"NOVO MEDOID: {nvo_medoid}")
+            if ponto_inicial == 0:
 
-            _CALCULO_DISTANCIA = {}
-            # CALCULAR A DISTANCIA DOS MEDOIDS PARA O NOVO MEDOID
-            for i in range(len(_MEDOIDS)):
-                distancia = math.sqrt((nvo_medoid[0] - _MEDOIDS[i][0]) ** 2 + (nvo_medoid[1] - _MEDOIDS[i][1]) ** 2)
-                _CALCULO_DISTANCIA[i] = []
-                _CALCULO_DISTANCIA[i].append(distancia)
+                # SORTEAR NOVO MEDOID
+                nvo_medoid = random.choice(new_dataset)
+                print(f"NOVO MEDOID: {nvo_medoid}")
 
-            menor_distancia, posicao = self.definir_menor(_CALCULO_DISTANCIA)
-            print(f"VALOR DA MENOR DISTANCIA: {menor_distancia}")
-            print(f"POSIÇÃO DO MEDOID COM MENOR DISTANCIA: {posicao}")
+                _CALCULO_DISTANCIA = {}
+                # CALCULAR A DISTANCIA DOS MEDOIDS PARA O NOVO MEDOID
+                for i in range(len(_MEDOIDS)):
+                    distancia = math.sqrt((nvo_medoid[0] - _MEDOIDS[i][0]) ** 2 + (nvo_medoid[1] - _MEDOIDS[i][1]) ** 2)
+                    _CALCULO_DISTANCIA[i] = []
+                    _CALCULO_DISTANCIA[i].append(distancia)
 
-            antigo_medoid = _MEDOIDS[posicao]
+                menor_distancia, posicao = self.definir_menor(_CALCULO_DISTANCIA)
+                print(f"VALOR DA MENOR DISTANCIA: {menor_distancia}")
+                print(f"POSIÇÃO DO MEDOID COM MENOR DISTANCIA: {posicao}")
 
-            print("___________________________________")
-            print(f"ANTIGO MEDOID: {antigo_medoid}")
+                # antigo_medoid = _MEDOIDS[posicao]
 
-            _MEDOIDS[posicao] = nvo_medoid
-            print(f"MEDOIDS COM NOVA POSIÇÃO: {_MEDOIDS}")
+                print("___________________________________")
+                print(f"ANTIGO MEDOID: {self._BACKUP_MEDOIDS}")
 
-            print("______________________________________________________________________")
-            print("NOVOS CALCULOS")
+                _MEDOIDS[posicao] = nvo_medoid
+                print(f"MEDOIDS COM NOVA POSIÇÃO: {_MEDOIDS}")
 
-            ASSOCIADOS_MEDOIDS = self.calculo_custo_medoids(X, Y, medoids=_MEDOIDS)
-            print(f"MEDOIDS ASSOCIADOS VALORES: {ASSOCIADOS_MEDOIDS}")
+                ponto_inicial += 1
 
-            NOVO_TOTAL_MSE = self.mse_total(ASSOCIADOS_MEDOIDS)
-            print(f"TOTAL MSE: {NOVO_TOTAL_MSE}")
+            elif ponto_inicial > 0:
+                print(self._VALORES_MSE)
+                if self._VALORES_MSE[1] < self._VALORES_MSE[0]:
+                    print("MENOR")
+                    print(self._BACKUP_MEDOIDS)
+                    print(_MEDOIDS)
+
+                else:
+                    print("MAIOR")
+                    print(self._BACKUP_MEDOIDS)
+                    print(_MEDOIDS)
+
+                break
 
 
 pam = AlgoritmoPAM()
