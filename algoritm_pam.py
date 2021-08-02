@@ -4,6 +4,7 @@ import pandas as pd
 import random
 import math
 
+
 df = pd.read_csv('base-covid-19-us.csv')
 df2 = df[:10]  # BASE TESTE
 
@@ -13,6 +14,7 @@ class AlgoritmoPAM:
     _MEDOIDS = None
     _VALORES_MSE = []
     _BACKUP_MEDOIDS = []
+    _CONTADOR_ALPHA = 0
 
     @staticmethod
     def definir_menor(lista_medoid):  # Função para identificar o menor valor
@@ -94,26 +96,46 @@ class AlgoritmoPAM:
 
         return MSE_TOTAL
 
-    def fit_pam(self, pontos, K):
+    def metodo_sorteio_medoid(self, new_dataset, _MEDOIDS):
+
+        # SORTEAR NOVO MEDOID
+        nvo_medoid = random.choice(new_dataset)
+        print(f"NOVO MEDOID: {nvo_medoid}")
+
+        _CALCULO_DISTANCIA = {}
+        # CALCULAR A DISTANCIA DOS MEDOIDS PARA O NOVO MEDOID
+        for i in range(len(_MEDOIDS)):
+            distancia = math.sqrt((nvo_medoid[0] - _MEDOIDS[i][0]) ** 2 + (nvo_medoid[1] - _MEDOIDS[i][1]) ** 2)
+            _CALCULO_DISTANCIA[i] = []
+            _CALCULO_DISTANCIA[i].append(distancia)
+
+        menor_distancia, posicao = self.definir_menor(_CALCULO_DISTANCIA)
+        print(f"VALOR DA MENOR DISTANCIA: {menor_distancia}")
+        print(f"POSIÇÃO DO MEDOID COM MENOR DISTANCIA: {posicao}")
+
+        return posicao, nvo_medoid
+
+    def fit_pam(self, pontos, K, alpha):
 
         # RECEBER OS VALORES DE ENTRADAS DO DATASET
-        global antigo_medoid
+        global set_posicao
         dataset = pontos.values
 
         # SORTEAR OS VALORES ALEATORIAMENTE, K PONTOS DOS DADOS COMO MEDOIDS
         posicao_medoids = random.sample(list(dataset), k=K)
         _MEDOIDS = np.array(posicao_medoids)  # Transformando os medoids em array
 
-        print(f"POSIÇÕES INICIAIS DOS MEDOIDS 00: {_MEDOIDS[0]}")
-        print(f"POSIÇÕES INICIAIS DOS MEDOIDS 01: {_MEDOIDS[1]}")
-        print(f"POSIÇÕES INICIAIS DOS MEDOIDS 02: {_MEDOIDS[2]}")
-        print("_______________________________________")
-        self._BACKUP_MEDOIDS.append(_MEDOIDS)
+        # print(f"POSIÇÕES INICIAIS DOS MEDOIDS 00: {_MEDOIDS[0]}")
+        # print(f"POSIÇÕES INICIAIS DOS MEDOIDS 01: {_MEDOIDS[1]}")
+        # print(f"POSIÇÕES INICIAIS DOS MEDOIDS 02: {_MEDOIDS[2]}")
+        # print("_______________________________________")
+        # self._BACKUP_MEDOIDS.append(_MEDOIDS)
         ponto_inicial = 0
         while True:
 
             # ATRIBUINDOS OS VALORES AS VARIAVEIS X E Y
             new_dataset = self.remove_medoids(dataset, _MEDOIDS)
+            print(_MEDOIDS)
 
             X = new_dataset.T[0]
             Y = new_dataset.T[1]
@@ -132,29 +154,14 @@ class AlgoritmoPAM:
             self._VALORES_MSE.append(TOTAL_MSE)
 
             if ponto_inicial == 0:
+                set_posicao, novo_medoid = self.metodo_sorteio_medoid(new_dataset, _MEDOIDS)
 
-                # SORTEAR NOVO MEDOID
-                nvo_medoid = random.choice(new_dataset)
-                print(f"NOVO MEDOID: {nvo_medoid}")
+                # antigo_medoid = np.array(_MEDOIDS[posicao])
+                self._BACKUP_MEDOIDS.append(np.array(_MEDOIDS[set_posicao]))  # antigo medoid adicionado em uma lista
 
-                _CALCULO_DISTANCIA = {}
-                # CALCULAR A DISTANCIA DOS MEDOIDS PARA O NOVO MEDOID
-                for i in range(len(_MEDOIDS)):
-                    distancia = math.sqrt((nvo_medoid[0] - _MEDOIDS[i][0]) ** 2 + (nvo_medoid[1] - _MEDOIDS[i][1]) ** 2)
-                    _CALCULO_DISTANCIA[i] = []
-                    _CALCULO_DISTANCIA[i].append(distancia)
-
-                menor_distancia, posicao = self.definir_menor(_CALCULO_DISTANCIA)
-                print(f"VALOR DA MENOR DISTANCIA: {menor_distancia}")
-                print(f"POSIÇÃO DO MEDOID COM MENOR DISTANCIA: {posicao}")
-
-                # antigo_medoid = _MEDOIDS[posicao]
-
-                print("___________________________________")
+                _MEDOIDS[set_posicao] = novo_medoid
                 print(f"ANTIGO MEDOID: {self._BACKUP_MEDOIDS}")
-
-                _MEDOIDS[posicao] = nvo_medoid
-                print(f"MEDOIDS COM NOVA POSIÇÃO: {_MEDOIDS}")
+                print(f"NOVOS MEDOID: {_MEDOIDS}")
 
                 ponto_inicial += 1
 
@@ -162,16 +169,47 @@ class AlgoritmoPAM:
                 print(self._VALORES_MSE)
                 if self._VALORES_MSE[1] < self._VALORES_MSE[0]:
                     print("MENOR")
-                    print(self._BACKUP_MEDOIDS)
+                    print(self._BACKUP_MEDOIDS[0])
                     print(_MEDOIDS)
+                    self._VALORES_MSE.remove(self._VALORES_MSE[0])
+                    self._BACKUP_MEDOIDS.remove(self._BACKUP_MEDOIDS[0])
+
+                    set_posicao, novo_medoid = self.metodo_sorteio_medoid(new_dataset, _MEDOIDS)
+
+                    self._BACKUP_MEDOIDS.append(np.array(_MEDOIDS[set_posicao]))
+
+                    _MEDOIDS[set_posicao] = novo_medoid
+                    print(f"ANTIGO MEDOID: {self._BACKUP_MEDOIDS}")
+                    print(f"NOVOS MEDOID: {_MEDOIDS}")
+
+                    self._CONTADOR_ALPHA = 0
 
                 else:
                     print("MAIOR")
-                    print(self._BACKUP_MEDOIDS)
+                    print(self._BACKUP_MEDOIDS[0], set_posicao)
                     print(_MEDOIDS)
+                    self._CONTADOR_ALPHA += 1
 
-                break
+                    if self._CONTADOR_ALPHA == alpha:
+                        print(f"ATINGIU A CONTAGEM MÁXIMA DE ALPHA: {self._CONTADOR_ALPHA}")
+                        _MEDOIDS[set_posicao] = self._BACKUP_MEDOIDS[0]
+                        self._VALORES_MSE.remove(self._VALORES_MSE[1])
+                        print(f"ULTIMA POSIÇÃO COM MELHOR MSE: {_MEDOIDS} | MSE FINAL: {self._VALORES_MSE}")
+                        break
+
+                    else:
+                        _MEDOIDS[set_posicao] = self._BACKUP_MEDOIDS[0]
+                        self._VALORES_MSE.remove(self._VALORES_MSE[1])
+                        self._BACKUP_MEDOIDS.remove(self._BACKUP_MEDOIDS[0])
+
+                        set_posicao, novo_medoid = self.metodo_sorteio_medoid(new_dataset, _MEDOIDS)
+
+                        self._BACKUP_MEDOIDS.append(np.array(_MEDOIDS[set_posicao]))
+
+                        _MEDOIDS[set_posicao] = novo_medoid
+                        print(f"ANTIGO MEDOID: {self._BACKUP_MEDOIDS}")
+                        print(f"NOVOS MEDOID: {_MEDOIDS}")
 
 
 pam = AlgoritmoPAM()
-pam.fit_pam(df2[['cases', 'deaths']], 3)
+pam.fit_pam(df[['cases', 'deaths']], 3, 3)
